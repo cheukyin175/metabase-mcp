@@ -18,12 +18,31 @@ This MCP server provides integration with the Metabase API, enabling LLM with MC
 
 The server exposes the following tools for AI assistants:
 
+### Data Access Tools
 - `list_dashboards`: Retrieve all available dashboards in your Metabase instance
 - `list_cards`: Get all saved questions/cards in Metabase
 - `list_databases`: View all connected database sources
+- `list_collections`: List all collections in Metabase
+- `list_tables`: List all tables in a specific database
+- `get_table_fields`: Get all fields/columns in a specific table
+
+### Execution Tools
 - `execute_card`: Run saved questions and retrieve results with optional parameters
-- `get_dashboard_cards`: Extract all cards from a specific dashboard
 - `execute_query`: Execute custom SQL queries against any connected database
+
+### Dashboard Management
+- `get_dashboard_cards`: Extract all cards from a specific dashboard
+- `create_dashboard`: Create a new dashboard with specified name and parameters
+- `update_dashboard`: Update an existing dashboard's name, description, or parameters
+- `delete_dashboard`: Delete a dashboard
+- `add_card_to_dashboard`: Add an existing card to a dashboard with position specifications
+
+### Card/Question Management
+- `create_card`: Create a new question/card with SQL query
+- `update_card_visualization`: Update visualization settings for a card
+
+### Collection Management
+- `create_collection`: Create a new collection to organize dashboards and questions
 
 ## Configuration
 
@@ -88,8 +107,8 @@ To use with Claude Desktop, add this server configuration:
 ```json
 {
   "mcpServers": {
-    "metabase-mcp-server": {
-      "command": "/absolute/path/to/metabase-mcp-server/build/index.js",
+    "metabase-mcp": {
+      "command": "/absolute/path/to/metabase-mcp/build/index.js",
       "env": {
         "METABASE_URL": "https://your-metabase-instance.com",
         "METABASE_USER_EMAIL": "your_email@example.com",
@@ -109,13 +128,13 @@ Alternatively, you can use the Smithery hosted version via npx with JSON configu
 ```json
 {
   "mcpServers": {
-    "metabase-mcp-server": {
+    "metabase-mcp": {
       "command": "npx",
       "args": [
         "-y",
         "@smithery/cli@latest",
         "run",
-        "@hyeongjun-dev/metabase-mcp-server",
+        "@hyeongjun-dev/metabase-mcp",
         "--config",
         "{\"metabaseUrl\":\"https://your-metabase-instance.com\",\"metabaseApiKey\":\"your_api_key\",\"metabasePassword\":\"\",\"metabaseUserEmail\":\"\"}"
       ]
@@ -129,13 +148,13 @@ Alternatively, you can use the Smithery hosted version via npx with JSON configu
 ```json
 {
   "mcpServers": {
-    "metabase-mcp-server": {
+    "metabase-mcp": {
       "command": "npx",
       "args": [
         "-y",
         "@smithery/cli@latest",
         "run",
-        "@hyeongjun-dev/metabase-mcp-server",
+        "@hyeongjun-dev/metabase-mcp",
         "--config",
         "{\"metabaseUrl\":\"https://your-metabase-instance.com\",\"metabaseApiKey\":\"\",\"metabasePassword\":\"your_password\",\"metabaseUserEmail\":\"your_email@example.com\"}"
       ]
@@ -160,12 +179,12 @@ A Docker image is available for containerized deployment:
 
 ```bash
 # Build the Docker image
-docker build -t metabase-mcp-server .
+docker build -t metabase-mcp .
 
 # Run the container with environment variables
 docker run -e METABASE_URL=https://your-metabase.com \
            -e METABASE_API_KEY=your_api_key \
-           metabase-mcp-server
+           metabase-mcp
 ```
 
 ## Security Considerations

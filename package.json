@@ -1,15 +1,15 @@
 {
-  "name": "metabase-mcp-server",
+  "name": "metabase-mcp",
   "version": "0.1.0",
-  "description": "A Model Context Protocol server for Metabase integration",
+  "description": "A Model Context Protocol server for Metabase",
   "private": true,
   "type": "module",
   "author": {
-    "name": "Hyeongjun Yu",
+    "name": "Hugo Lau",
     "url": "https://github.com/hyeongjun-dev"
   },
   "bin": {
-    "metabase-mcp-server": "./build/index.js"
+    "metabase-mcp": "./build/index.js"
   },
   "files": [
     "build"

@@ -18,32 +18,15 @@ import {
   CallToolRequestSchema
 } from "@modelcontextprotocol/sdk/types.js";
 import { z } from "zod";
-
-// Custom error enum
-enum ErrorCode {
-  InternalError = "internal_error",
-  InvalidRequest = "invalid_request",
-  InvalidParams = "invalid_params",
-  MethodNotFound = "method_not_found"
-}
-
-// Custom error class
-class McpError extends Error {
-  code: ErrorCode;
-
-  constructor(code: ErrorCode, message: string) {
-    super(message);
-    this.code = code;
-    this.name = "McpError";
-  }
-}
-
-// API error type definition
-interface ApiError {
-  status?: number;
-  message?: string;
-  data?: { message?: string };
-}
+import { 
+  AuthMethod, 
+  LogLevel, 
+  McpError, 
+  ErrorCode,
+  ListToolsRequestSchema,
+  TOOL_DEFINITIONS,
+  ToolExecutionHandler
+} from "./tools.js";
 
 // Get Metabase configuration from environment variables
 const METABASE_URL = process.env.METABASE_URL;
@@ -60,25 +43,6 @@ const ListResourceTemplatesRequestSchema = z.object({
   method: z.literal("resources/list_templates")
 });
 
-const ListToolsRequestSchema = z.object({
-  method: z.literal("tools/list")
-});
-
-// Logger level enum
-enum LogLevel {
-  DEBUG = 'debug',
-  INFO = 'info',
-  WARN = 'warn',
-  ERROR = 'error',
-  FATAL = 'fatal'
-}
-
-// Authentication method enum
-enum AuthMethod {
-  SESSION = 'session',
-  API_KEY = 'api_key'
-}
-
 class MetabaseServer {
   private server: Server;
   private baseUrl: string;
@@ -88,11 +52,12 @@ class MetabaseServer {
   private headers: Record<string, string> = {
     "Content-Type": "application/json",
   };
+  private toolExecutionHandler: ToolExecutionHandler;
 
   constructor() {
     this.server = new Server(
       {
-        name: "metabase-mcp-server",
+        name: "metabase-mcp",
         version: "0.1.0",
       },
       {
@@ -110,6 +75,14 @@ class MetabaseServer {
     } else {
       this.logInfo('Using Session Token authentication method');
     }
+
+    // Initialize tool handler with required functions
+    this.toolExecutionHandler = new ToolExecutionHandler(
+      this.log.bind(this),
+      this.request.bind(this),
+      this.getSessionToken.bind(this),
+      this.generateRequestId.bind(this)
+    );
 
     this.setupResourceHandlers();
     this.setupToolHandlers();
@@ -405,7 +378,7 @@ class MetabaseServer {
           );
         }
       } catch (error) {
-        const apiError = error as ApiError;
+        const apiError = error as any;
         const errorMessage = apiError.data?.message || apiError.message || 'Unknown error';
         this.logError(`Failed to fetch Metabase resource: ${errorMessage}`, error);
 
@@ -428,272 +401,17 @@ class MetabaseServer {
    * Set up tool handlers
    */
   private setupToolHandlers() {
+    // List tools handler
     this.server.setRequestHandler(ListToolsRequestSchema, async () => {
       this.logInfo('Processing request to list available tools');
       return {
-        tools: [
-          {
-            name: "list_dashboards",
-            description: "List all dashboards in Metabase",
-            inputSchema: {
-              type: "object",
-              properties: {}
-            }
-          },
-          {
-            name: "list_cards",
-            description: "List all questions/cards in Metabase",
-            inputSchema: {
-              type: "object",
-              properties: {}
-            }
-          },
-          {
-            name: "list_databases",
-            description: "List all databases in Metabase",
-            inputSchema: {
-              type: "object",
-              properties: {}
-            }
-          },
-          {
-            name: "execute_card",
-            description: "Execute a Metabase question/card and get results",
-            inputSchema: {
-              type: "object",
-              properties: {
-                card_id: {
-                  type: "number",
-                  description: "ID of the card/question to execute"
-                },
-                parameters: {
-                  type: "object",
-                  description: "Optional parameters for the query"
-                }
-              },
-              required: ["card_id"]
-            }
-          },
-          {
-            name: "get_dashboard_cards",
-            description: "Get all cards in a dashboard",
-            inputSchema: {
-              type: "object",
-              properties: {
-                dashboard_id: {
-                  type: "number",
-                  description: "ID of the dashboard"
-                }
-              },
-              required: ["dashboard_id"]
-            }
-          },
-          {
-            name: "execute_query",
-            description: "Execute a SQL query against a Metabase database",
-            inputSchema: {
-              type: "object",
-              properties: {
-                database_id: {
-                  type: "number",
-                  description: "ID of the database to query"
-                },
-                query: {
-                  type: "string",
-                  description: "SQL query to execute"
-                },
-                native_parameters: {
-                  type: "array",
-                  description: "Optional parameters for the query",
-                  items: {
-                    type: "object"
-                  }
-                }
-              },
-              required: ["database_id", "query"]
-            }
-          }
-        ]
+        tools: TOOL_DEFINITIONS
       };
     });
 
+    // Tool execution handler
     this.server.setRequestHandler(CallToolRequestSchema, async (request) => {
-      const toolName = request.params?.name || 'unknown';
-      const requestId = this.generateRequestId();
-
-      this.logInfo(`Processing tool execution request: ${toolName}`, {
-        requestId,
-        toolName,
-        arguments: request.params?.arguments
-      });
-
-      await this.getSessionToken();
-
-      try {
-        switch (request.params?.name) {
-          case "list_dashboards": {
-            this.logDebug('Fetching all dashboards from Metabase');
-            const response = await this.request<any[]>('/api/dashboard');
-            this.logInfo(`Successfully retrieved ${response.length} dashboards`);
-
-            return {
-              content: [{
-                type: "text",
-                text: JSON.stringify(response, null, 2)
-              }]
-            };
-          }
-
-          case "list_cards": {
-            this.logDebug('Fetching all cards/questions from Metabase');
-            const response = await this.request<any[]>('/api/card');
-            this.logInfo(`Successfully retrieved ${response.length} cards/questions`);
-
-            return {
-              content: [{
-                type: "text",
-                text: JSON.stringify(response, null, 2)
-              }]
-            };
-          }
-
-          case "list_databases": {
-            this.logDebug('Fetching all databases from Metabase');
-            const response = await this.request<any[]>('/api/database');
-            this.logInfo(`Successfully retrieved ${response.length} databases`);
-
-            return {
-              content: [{
-                type: "text",
-                text: JSON.stringify(response, null, 2)
-              }]
-            };
-          }
-
-          case "execute_card": {
-            const cardId = request.params?.arguments?.card_id;
-            if (!cardId) {
-              this.logWarn('Missing card_id parameter in execute_card request', { requestId });
-              throw new McpError(
-                ErrorCode.InvalidParams,
-                "Card ID parameter is required"
-              );
-            }
-
-            this.logDebug(`Executing card with ID: ${cardId}`);
-            const parameters = request.params?.arguments?.parameters || {};
-
-            const response = await this.request<any>(`/api/card/${cardId}/query`, {
-              method: 'POST',
-              body: JSON.stringify({ parameters })
-            });
-
-            this.logInfo(`Successfully executed card: ${cardId}`);
-            return {
-              content: [{
-                type: "text",
-                text: JSON.stringify(response, null, 2)
-              }]
-            };
-          }
-
-          case "get_dashboard_cards": {
-            const dashboardId = request.params?.arguments?.dashboard_id;
-            if (!dashboardId) {
-              this.logWarn('Missing dashboard_id parameter in get_dashboard_cards request', { requestId });
-              throw new McpError(
-                ErrorCode.InvalidParams,
-                "Dashboard ID parameter is required"
-              );
-            }
-
-            this.logDebug(`Fetching cards for dashboard with ID: ${dashboardId}`);
-            const response = await this.request<any>(`/api/dashboard/${dashboardId}`);
-
-            const cardCount = response.cards?.length || 0;
-            this.logInfo(`Successfully retrieved ${cardCount} cards from dashboard: ${dashboardId}`);
-
-            return {
-              content: [{
-                type: "text",
-                text: JSON.stringify(response.cards, null, 2)
-              }]
-            };
-          }
-
-          case "execute_query": {
-            const databaseId = request.params?.arguments?.database_id;
-            const query = request.params?.arguments?.query;
-            const nativeParameters = request.params?.arguments?.native_parameters || [];
-
-            if (!databaseId) {
-              this.logWarn('Missing database_id parameter in execute_query request', { requestId });
-              throw new McpError(
-                ErrorCode.InvalidParams,
-                "Database ID parameter is required"
-              );
-            }
-
-            if (!query) {
-              this.logWarn('Missing query parameter in execute_query request', { requestId });
-              throw new McpError(
-                ErrorCode.InvalidParams,
-                "SQL query parameter is required"
-              );
-            }
-
-            this.logDebug(`Executing SQL query against database ID: ${databaseId}`);
-
-            // Build query request body
-            const queryData = {
-              type: "native",
-              native: {
-                query: query,
-                template_tags: {}
-              },
-              parameters: nativeParameters,
-              database: databaseId
-            };
-
-            const response = await this.request<any>('/api/dataset', {
-              method: 'POST',
-              body: JSON.stringify(queryData)
-            });
-
-            this.logInfo(`Successfully executed SQL query against database: ${databaseId}`);
-            return {
-              content: [{
-                type: "text",
-                text: JSON.stringify(response, null, 2)
-              }]
-            };
-          }
-
-          default:
-            this.logWarn(`Received request for unknown tool: ${request.params?.name}`, { requestId });
-            return {
-              content: [
-                {
-                  type: "text",
-                  text: `Unknown tool: ${request.params?.name}`
-                }
-              ],
-              isError: true
-            };
-        }
-      } catch (error) {
-        const apiError = error as ApiError;
-        const errorMessage = apiError.data?.message || apiError.message || 'Unknown error';
-
-        this.logError(`Tool execution failed: ${errorMessage}`, error);
-        return {
-          content: [{
-            type: "text",
-            text: `Metabase API error: ${errorMessage}`
-          }],
-          isError: true
-        };
-      }
+      return await this.toolExecutionHandler.executeToolRequest(request);
     });
   }
 

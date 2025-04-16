@@ -39,10 +39,10 @@ ENV NODE_ENV=production \
 
 # Authentication setup (configure via Docker run -e flags)
 # Option 1: Username and password authentication
-# docker run -e METABASE_URL=https://metabase.example.com -e METABASE_USER_EMAIL=user@example.com -e METABASE_PASSWORD=pass metabase-mcp-server
+# docker run -e METABASE_URL=https://metabase.example.com -e METABASE_USER_EMAIL=user@example.com -e METABASE_PASSWORD=pass metabase-mcp
 
 # Option 2: API Key authentication (recommended for production)
-# docker run -e METABASE_URL=https://metabase.example.com -e METABASE_API_KEY=your_api_key metabase-mcp-server
+# docker run -e METABASE_URL=https://metabase.example.com -e METABASE_API_KEY=your_api_key metabase-mcp
 
 # Use non-root user for better security
 USER node
