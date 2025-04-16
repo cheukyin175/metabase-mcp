@@ -1,0 +1,52 @@
+{
+  "name": "metabase-mcp-server",
+  "version": "0.1.0",
+  "description": "A Model Context Protocol server for Metabase integration",
+  "private": true,
+  "type": "module",
+  "author": {
+    "name": "Hyeongjun Yu",
+    "url": "https://github.com/hyeongjun-dev"
+  },
+  "bin": {
+    "metabase-mcp-server": "./build/index.js"
+  },
+  "files": [
+    "build"
+  ],
+  "scripts": {
+    "build": "tsc && node -e \"require('fs').chmodSync('build/index.js', '755')\" && mkdir -p dist && cp build/index.js dist/index.js",
+    "prepare": "npm run build",
+    "watch": "tsc --watch",
+    "inspector": "npx @modelcontextprotocol/inspector build/index.js",
+    "start": "node build/index.js",
+    "dev": "tsc && node build/index.js",
+    "lint": "eslint --ext .ts src/",
+    "lint:fix": "eslint --ext .ts src/ --fix",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "test": "echo \"No tests specified\" && exit 0"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^0.6.1",
+    "dotenv": "^16.3.1",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.17.22",
+    "typescript": "^5.3.3",
+    "eslint": "^8.57.0",
+    "@typescript-eslint/eslint-plugin": "^7.1.0",
+    "@typescript-eslint/parser": "^7.1.0",
+    "prettier": "^3.2.5"
+  },
+  "keywords": [
+    "metabase",
+    "mcp",
+    "model-context-protocol",
+    "ai",
+    "claude"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
