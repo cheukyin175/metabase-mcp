@@ -632,7 +632,7 @@ export class ToolExecutionHandler {
             size_y: size_y || 4
           };
           
-          const response = await this.request<any>('/api/dashboard/${dashboard_id}/cards', {
+          const response = await this.request<any>(`/api/dashboard/${dashboard_id}/cards`, {
             method: 'POST',
             body: JSON.stringify(dashboardCardData)
           });
