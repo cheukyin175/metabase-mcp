@@ -1,14 +1,10 @@
 # Metabase MCP Server
 
-**Author**: Hyeongjun Yu ([@hyeongjun-dev](https://github.com/hyeongjun-dev))
-
-[![smithery badge](https://smithery.ai/badge/@hyeongjun-dev/metabase-mcp-server)](https://smithery.ai/server/@hyeongjun-dev/metabase-mcp-server)
-
 A Model Context Protocol server that integrates AI assistants with Metabase analytics platform.
 
 ## Overview
 
-This TypeScript-based MCP server provides seamless integration with the Metabase API, enabling AI assistants to directly interact with your analytics data. Designed for Claude and other MCP-compatible AI assistants, this server acts as a bridge between your analytics platform and conversational AI.
+This MCP server provides integration with the Metabase API, enabling LLM with MCP capabilites to directly interact with your analytics data, this server acts as a bridge between your analytics platform and conversational AI.
 
 ### Key Features
 
