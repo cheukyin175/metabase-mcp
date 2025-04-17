@@ -241,7 +241,7 @@ export const TOOL_DEFINITIONS = [
           type: "object",
           description: "New visualization settings"
         },
-        collection: {
+        collection_id: {
           type: "number",
           description: "ID of the collection to put the card in (optional)"
         }
@@ -279,7 +279,7 @@ export const TOOL_DEFINITIONS = [
           type: "number",
           description: "Height of the card in dashboard grid units"
         },
-        collection: {
+        collection_id: {
           type: "number",
           description: "ID of the collection to put the card in (optional)"
         },
@@ -322,7 +322,7 @@ export const TOOL_DEFINITIONS = [
             type: "object"
           }
         },
-        collection: {
+        collection_id: {
           type: "number",
           description: "ID of the collection to put the dashboard in (optional)"
         },
@@ -726,7 +726,7 @@ export class ToolExecutionHandler {
         }
         
         case "add_card_to_dashboard": {
-          const { dashboard_id, card_id, row, col, size_x, size_y } = request.params?.arguments || {};
+          const { dashboard_id, card_id, row, col, size_x, size_y, parameter_mappings, series } = request.params?.arguments || {};
           
           if (!dashboard_id || !card_id) {
             this.log(LogLevel.WARN, 'Missing required parameters in add_card_to_dashboard request', { requestId });
@@ -741,8 +741,9 @@ export class ToolExecutionHandler {
           const dashboardCardData = {
             cardId: card_id,
             dashboard_id: dashboard_id,
-            parameter_mappings: [],
+            parameter_mappings: parameter_mappings || [],
             visualization_settings: {},
+            series: series || [],
             row: row || 0,
             col: col || 0,
             size_x: size_x || 4,
