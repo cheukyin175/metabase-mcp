@@ -58,7 +58,16 @@ export const TOOL_DEFINITIONS = [
     description: "List all dashboards in Metabase",
     inputSchema: {
       type: "object",
-      properties: {}
+      properties: {
+        collection_id: {
+          type: "number",
+          description: "Optional filter by collection ID"
+        },
+        archived: {
+          type: "boolean",
+          description: "Whether to include archived dashboards"
+        }
+      }
     }
   },
   {
@@ -66,7 +75,20 @@ export const TOOL_DEFINITIONS = [
     description: "List all questions/cards in Metabase",
     inputSchema: {
       type: "object",
-      properties: {}
+      properties: {
+        collection_id: {
+          type: "number",
+          description: "Optional filter by collection ID"
+        },
+        model_id: {
+          type: "number",
+          description: "Filter by model ID"
+        },
+        archived: {
+          type: "boolean",
+          description: "Whether to include archived cards"
+        }
+      }
     }
   },
   {
@@ -74,7 +96,16 @@ export const TOOL_DEFINITIONS = [
     description: "List all databases in Metabase",
     inputSchema: {
       type: "object",
-      properties: {}
+      properties: {
+        include_tables: {
+          type: "boolean",
+          description: "Whether to include tables in the response"
+        },
+        include_cards: {
+          type: "boolean",
+          description: "Whether to include saved questions/cards in the response"
+        }
+      }
     }
   },
   {
@@ -90,6 +121,14 @@ export const TOOL_DEFINITIONS = [
         parameters: {
           type: "object",
           description: "Optional parameters for the query"
+        },
+        ignore_cache: {
+          type: "boolean",
+          description: "Whether to ignore cached results"
+        },
+        dashboard_id: {
+          type: "number",
+          description: "Optional dashboard context"
         }
       },
       required: ["card_id"]
@@ -129,6 +168,14 @@ export const TOOL_DEFINITIONS = [
           items: {
             type: "object"
           }
+        },
+        max_rows: {
+          type: "number",
+          description: "Maximum number of rows to return"
+        },
+        max_results_display_rows: {
+          type: "number",
+          description: "Maximum number of rows to display in the UI"
         }
       },
       required: ["database_id", "query"]
@@ -163,6 +210,18 @@ export const TOOL_DEFINITIONS = [
         collection_id: {
           type: "number",
           description: "ID of the collection to put the card in (optional)"
+        },
+        display: {
+          type: "string",
+          description: "Display type (e.g., 'table', 'line', 'bar', 'pie')"
+        },
+        enable_embedding: {
+          type: "boolean",
+          description: "Whether to enable embedding for this card"
+        },
+        is_write: {
+          type: "boolean",
+          description: "Whether this is a write query"
         }
       },
       required: ["name", "database_id", "query"]
@@ -223,6 +282,20 @@ export const TOOL_DEFINITIONS = [
         collection_id: {
           type: "number",
           description: "ID of the collection to put the card in (optional)"
+        },
+        parameter_mappings: {
+          type: "array",
+          description: "Parameter mappings for dashboard filters",
+          items: {
+            type: "object"
+          }
+        },
+        series: {
+          type: "array",
+          description: "Additional series to include with this card",
+          items: {
+            type: "object"
+          }
         }
       },
       required: ["dashboard_id", "card_id"]
@@ -252,6 +325,18 @@ export const TOOL_DEFINITIONS = [
         collection_id: {
           type: "number",
           description: "ID of the collection to put the dashboard in (optional)"
+        },
+        enable_embedding: {
+          type: "boolean",
+          description: "Whether to enable embedding for this dashboard"
+        },
+        auto_apply_filters: {
+          type: "boolean",
+          description: "Whether filters should auto-apply"
+        },
+        cache_ttl: {
+          type: "number",
+          description: "Cache time-to-live in seconds"
         }
       },
       required: ["name"]
@@ -286,6 +371,14 @@ export const TOOL_DEFINITIONS = [
         parent_id: {
           type: "number",
           description: "ID of the parent collection (optional)"
+        },
+        namespace: {
+          type: "string",
+          description: "Namespace for the collection"
+        },
+        authority_level: {
+          type: "string",
+          description: "Authority level (e.g., 'official')"
         }
       },
       required: ["name"]
@@ -347,6 +440,18 @@ export const TOOL_DEFINITIONS = [
         collection_id: {
           type: "number",
           description: "New collection ID for the dashboard"
+        },
+        enable_embedding: {
+          type: "boolean",
+          description: "Whether to enable embedding"
+        },
+        auto_apply_filters: {
+          type: "boolean",
+          description: "Whether filters should auto-apply"
+        },
+        archived: {
+          type: "boolean",
+          description: "Whether to archive the dashboard"
         }
       },
       required: ["dashboard_id"]
