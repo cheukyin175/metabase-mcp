@@ -211,6 +211,20 @@ export const TOOL_DEFINITIONS = [
         size_y: {
           type: "number",
           description: "Height of the card in dashboard grid units"
+        },
+        parameter_mappings: {
+          type: "array",
+          description: "Parameter mappings for dashboard filters",
+          items: {
+            type: "object"
+          }
+        },
+        series: {
+          type: "array",
+          description: "Additional series to include with this card",
+          items: {
+            type: "object"
+          }
         }
       },
       required: ["dashboard_id", "card_id"]
@@ -240,6 +254,22 @@ export const TOOL_DEFINITIONS = [
         collection_id: {
           type: "number",
           description: "ID of the collection to put the dashboard in (optional)"
+        },
+        collection_position: {
+          type: "number",
+          description: "Position within the collection (optional)"
+        },
+        cache_ttl: {
+          type: "number",
+          description: "Cache time-to-live in seconds"
+        },
+        auto_apply_filters: {
+          type: "boolean",
+          description: "Whether filters should auto-apply"
+        },
+        enable_embedding: {
+          type: "boolean",
+          description: "Whether to enable embedding for this dashboard"
         }
       },
       required: ["name"]
@@ -288,6 +318,14 @@ export const TOOL_DEFINITIONS = [
         database_id: {
           type: "number",
           description: "ID of the database"
+        },
+        include_tables: {
+          type: "boolean",
+          description: "Whether to include tables in the response"
+        },
+        include_cards: {
+          type: "boolean",
+          description: "Whether to include saved questions/cards in the response"
         }
       },
       required: ["database_id"]
@@ -335,6 +373,30 @@ export const TOOL_DEFINITIONS = [
         collection_id: {
           type: "number",
           description: "New collection ID for the dashboard"
+        },
+        collection_position: {
+          type: "number",
+          description: "New position within the collection"
+        },
+        cache_ttl: {
+          type: "number",
+          description: "Cache time-to-live in seconds"
+        },
+        auto_apply_filters: {
+          type: "boolean",
+          description: "Whether filters should auto-apply"
+        },
+        enable_embedding: {
+          type: "boolean",
+          description: "Whether to enable embedding"
+        },
+        embedding_params: {
+          type: "object",
+          description: "Parameters configuration for embedding"
+        },
+        archived: {
+          type: "boolean",
+          description: "Whether to archive the dashboard"
         }
       },
       required: ["dashboard_id"]
@@ -609,7 +671,7 @@ export class ToolExecutionHandler {
         }
         
         case "add_card_to_dashboard": {
-          const { dashboard_id, card_id, row, col, size_x, size_y } = request.params?.arguments || {};
+          const { dashboard_id, card_id, row, col, size_x, size_y, parameter_mappings, series } = request.params?.arguments || {};
           
           if (!dashboard_id || !card_id) {
             this.log(LogLevel.WARN, 'Missing required parameters in add_card_to_dashboard request', { requestId });
@@ -621,16 +683,20 @@ export class ToolExecutionHandler {
           
           this.log(LogLevel.DEBUG, `Adding card ${card_id} to dashboard ${dashboard_id}`);
           
-          const dashboardCardData = {
+          const dashboardCardData: any = {
             cardId: card_id,
             dashboard_id: dashboard_id,
-            parameter_mappings: [],
+            parameter_mappings: parameter_mappings || [],
             visualization_settings: {},
             row: row || 0,
             col: col || 0,
             size_x: size_x || 4,
             size_y: size_y || 4
           };
+          
+          if (series) {
+            dashboardCardData.series = series;
+          }
           
           const response = await this.request<any>(`/api/dashboard/${dashboard_id}/cards`, {
             method: 'POST',
@@ -647,7 +713,7 @@ export class ToolExecutionHandler {
         }
         
         case "create_dashboard": {
-          const { name, description, parameters, collection_id } = request.params?.arguments || {};
+          const { name, description, parameters, collection_id, collection_position, cache_ttl, auto_apply_filters, enable_embedding } = request.params?.arguments || {};
           
           if (!name) {
             this.log(LogLevel.WARN, 'Missing name parameter in create_dashboard request', { requestId });
@@ -667,6 +733,22 @@ export class ToolExecutionHandler {
           
           if (collection_id) {
             dashboardData.collection_id = collection_id;
+          }
+          
+          if (collection_position) {
+            dashboardData.collection_position = collection_position;
+          }
+          
+          if (cache_ttl) {
+            dashboardData.cache_ttl = cache_ttl;
+          }
+          
+          if (auto_apply_filters !== undefined) {
+            dashboardData.auto_apply_filters = auto_apply_filters;
+          }
+          
+          if (enable_embedding !== undefined) {
+            dashboardData.enable_embedding = enable_embedding;
           }
           
           const response = await this.request<any>('/api/dashboard', {
@@ -737,7 +819,7 @@ export class ToolExecutionHandler {
         }
         
         case "list_tables": {
-          const { database_id } = request.params?.arguments || {};
+          const { database_id, include_tables, include_cards } = request.params?.arguments || {};
           
           if (!database_id) {
             this.log(LogLevel.WARN, 'Missing database_id parameter in list_tables request', { requestId });
@@ -748,7 +830,23 @@ export class ToolExecutionHandler {
           }
           
           this.log(LogLevel.DEBUG, `Fetching tables for database ID: ${database_id}`);
-          const response = await this.request<any[]>(`/api/database/${database_id}/tables`);
+          
+          let url = `/api/database/${database_id}/tables`;
+          const queryParams = [];
+          
+          if (include_tables !== undefined) {
+            queryParams.push(`include_tables=${include_tables}`);
+          }
+          
+          if (include_cards !== undefined) {
+            queryParams.push(`include_cards=${include_cards}`);
+          }
+          
+          if (queryParams.length > 0) {
+            url += `?${queryParams.join('&')}`;
+          }
+          
+          const response = await this.request<any[]>(url);
           this.log(LogLevel.INFO, `Successfully retrieved ${response.length} tables from database: ${database_id}`);
 
           return {
@@ -783,7 +881,8 @@ export class ToolExecutionHandler {
         }
         
         case "update_dashboard": {
-          const { dashboard_id, name, description, parameters, collection_id } = request.params?.arguments || {};
+          const { dashboard_id, name, description, parameters, collection_id, collection_position, 
+                 cache_ttl, auto_apply_filters, enable_embedding, embedding_params, archived } = request.params?.arguments || {};
           
           if (!dashboard_id) {
             this.log(LogLevel.WARN, 'Missing dashboard_id parameter in update_dashboard request', { requestId });
@@ -795,16 +894,19 @@ export class ToolExecutionHandler {
           
           this.log(LogLevel.DEBUG, `Updating dashboard with ID: ${dashboard_id}`);
           
-          // First get the current dashboard
-          const dashboard = await this.request<any>(`/api/dashboard/${dashboard_id}`);
-          
           // Build update data
-          const updateData: any = { ...dashboard };
+          const updateData: any = {};
           
           if (name) updateData.name = name;
-          if (description) updateData.description = description;
+          if (description !== undefined) updateData.description = description;
           if (parameters) updateData.parameters = parameters;
           if (collection_id) updateData.collection_id = collection_id;
+          if (collection_position) updateData.collection_position = collection_position;
+          if (cache_ttl !== undefined) updateData.cache_ttl = cache_ttl;
+          if (auto_apply_filters !== undefined) updateData.auto_apply_filters = auto_apply_filters;
+          if (enable_embedding !== undefined) updateData.enable_embedding = enable_embedding;
+          if (embedding_params) updateData.embedding_params = embedding_params;
+          if (archived !== undefined) updateData.archived = archived;
           
           const response = await this.request<any>(`/api/dashboard/${dashboard_id}`, {
             method: 'PUT',
