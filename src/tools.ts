@@ -159,6 +159,10 @@ export const TOOL_DEFINITIONS = [
         visualization_settings: {
           type: "object",
           description: "Visualization settings for the card"
+        },
+        collection_id: {
+          type: "number",
+          description: "ID of the collection to put the card in (optional)"
         }
       },
       required: ["name", "database_id", "query"]
@@ -177,6 +181,10 @@ export const TOOL_DEFINITIONS = [
         visualization_settings: {
           type: "object",
           description: "New visualization settings"
+        },
+        collection_id: {
+          type: "number",
+          description: "ID of the collection to put the card in (optional)"
         }
       },
       required: ["card_id", "visualization_settings"]
@@ -211,6 +219,10 @@ export const TOOL_DEFINITIONS = [
         size_y: {
           type: "number",
           description: "Height of the card in dashboard grid units"
+        },
+        collection_id: {
+          type: "number",
+          description: "ID of the collection to put the card in (optional)"
         }
       },
       required: ["dashboard_id", "card_id"]
