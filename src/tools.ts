@@ -59,7 +59,7 @@ export const TOOL_DEFINITIONS = [
     inputSchema: {
       type: "object",
       properties: {
-        collection_id: {
+        collection: {
           type: "number",
           description: "Optional filter by collection ID"
         },
@@ -76,7 +76,7 @@ export const TOOL_DEFINITIONS = [
     inputSchema: {
       type: "object",
       properties: {
-        collection_id: {
+        collection: {
           type: "number",
           description: "Optional filter by collection ID"
         },
@@ -207,7 +207,7 @@ export const TOOL_DEFINITIONS = [
           type: "object",
           description: "Visualization settings for the card"
         },
-        collection_id: {
+        collection: {
           type: "number",
           description: "ID of the collection to put the card in (optional)"
         },
@@ -241,7 +241,7 @@ export const TOOL_DEFINITIONS = [
           type: "object",
           description: "New visualization settings"
         },
-        collection_id: {
+        collection: {
           type: "number",
           description: "ID of the collection to put the card in (optional)"
         }
@@ -279,7 +279,7 @@ export const TOOL_DEFINITIONS = [
           type: "number",
           description: "Height of the card in dashboard grid units"
         },
-        collection_id: {
+        collection: {
           type: "number",
           description: "ID of the collection to put the card in (optional)"
         },
@@ -322,7 +322,7 @@ export const TOOL_DEFINITIONS = [
             type: "object"
           }
         },
-        collection_id: {
+        collection: {
           type: "number",
           description: "ID of the collection to put the dashboard in (optional)"
         },
@@ -437,7 +437,7 @@ export const TOOL_DEFINITIONS = [
             type: "object"
           }
         },
-        collection_id: {
+        collection: {
           type: "number",
           description: "New collection ID for the dashboard"
         },
@@ -764,7 +764,7 @@ export class ToolExecutionHandler {
         }
         
         case "create_dashboard": {
-          const { name, description, parameters, collection_id } = request.params?.arguments || {};
+          const { name, description, parameters, collection } = request.params?.arguments || {};
           
           if (!name) {
             this.log(LogLevel.WARN, 'Missing name parameter in create_dashboard request', { requestId });
@@ -782,8 +782,8 @@ export class ToolExecutionHandler {
             parameters: parameters || []
           };
           
-          if (collection_id) {
-            dashboardData.collection_id = collection_id;
+          if (collection) {
+            dashboardData.collection = collection;
           }
           
           const response = await this.request<any>('/api/dashboard', {
@@ -900,7 +900,7 @@ export class ToolExecutionHandler {
         }
         
         case "update_dashboard": {
-          const { dashboard_id, name, description, parameters, collection_id } = request.params?.arguments || {};
+          const { dashboard_id, name, description, parameters, collection } = request.params?.arguments || {};
           
           if (!dashboard_id) {
             this.log(LogLevel.WARN, 'Missing dashboard_id parameter in update_dashboard request', { requestId });
@@ -921,7 +921,7 @@ export class ToolExecutionHandler {
           if (name) updateData.name = name;
           if (description) updateData.description = description;
           if (parameters) updateData.parameters = parameters;
-          if (collection_id) updateData.collection_id = collection_id;
+          if (collection) updateData.collection = collection;
           
           const response = await this.request<any>(`/api/dashboard/${dashboard_id}`, {
             method: 'PUT',
