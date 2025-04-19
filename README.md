@@ -35,7 +35,7 @@ The server exposes the following tools for AI assistants:
 - `create_dashboard`: Create a new dashboard with specified name and parameters
 - `update_dashboard`: Update an existing dashboard's name, description, or parameters
 - `delete_dashboard`: Delete a dashboard
-- `add_card_to_dashboard`: Add an existing card to a dashboard with position specifications
+- `add_card_to_dashboard`: Add or update cards in a dashboard with position specifications and optional tab assignment
 
 ### Card/Question Management
 - `create_card`: Create a new question/card with SQL query

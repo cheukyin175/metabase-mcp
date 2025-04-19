@@ -159,6 +159,13 @@ export const TOOL_DEFINITIONS = [
         visualization_settings: {
           type: "object",
           description: "Visualization settings for the card"
+        },
+        collection_id: {
+          type: "number",
+          description: "ID of the collection to put the card in (optional)"
+        },
+        collection_position: {
+          type: "number",
         }
       },
       required: ["name", "database_id", "query"]
@@ -225,6 +232,10 @@ export const TOOL_DEFINITIONS = [
           items: {
             type: "object"
           }
+        },
+        tab_id: {
+          type: "number",
+          description: "ID of the tab to add the card to (optional)"
         }
       },
       required: ["dashboard_id", "card_id"]
@@ -671,7 +682,7 @@ export class ToolExecutionHandler {
         }
         
         case "add_card_to_dashboard": {
-          const { dashboard_id, card_id, row, col, size_x, size_y, parameter_mappings, series } = request.params?.arguments || {};
+          const { dashboard_id, card_id, row, col, size_x, size_y, parameter_mappings, series, tab_id } = request.params?.arguments || {};
           
           if (!dashboard_id || !card_id) {
             this.log(LogLevel.WARN, 'Missing required parameters in add_card_to_dashboard request', { requestId });
@@ -683,24 +694,53 @@ export class ToolExecutionHandler {
           
           this.log(LogLevel.DEBUG, `Adding card ${card_id} to dashboard ${dashboard_id}`);
           
-          const dashboardCardData: any = {
-            cardId: card_id,
-            dashboard_id: dashboard_id,
-            parameter_mappings: parameter_mappings || [],
-            visualization_settings: {},
+          // First get the current dashboard to get existing cards
+          const currentDashboard = await this.request<any>(`/api/dashboard/${dashboard_id}`);
+          
+          // Create the new card entry
+          const newCard: any = {
+            id: card_id,
             row: row || 0,
             col: col || 0,
             size_x: size_x || 4,
-            size_y: size_y || 4
+            size_y: size_y || 4,
+            parameter_mappings: parameter_mappings || []
           };
           
-          if (series) {
-            dashboardCardData.series = series;
+          if (series && series.length > 0) {
+            newCard.series = series;
           }
           
+          // Get existing cards and add the new one
+          const existingCards = currentDashboard.ordered_cards || [];
+          const updatedCards = [...existingCards.map((card: any) => ({
+            id: card.card_id,
+            row: card.row,
+            col: card.col,
+            size_x: card.size_x,
+            size_y: card.size_y,
+            parameter_mappings: card.parameter_mappings || [],
+            ...(card.series && card.series.length > 0 ? { series: card.series } : {})
+          })), newCard];
+          
+          // Prepare tabs info if provided
+          const payload: any = {
+            cards: updatedCards
+          };
+          
+          if (tab_id || (currentDashboard.tabs && currentDashboard.tabs.length > 0)) {
+            payload.tabs = currentDashboard.tabs || [];
+            
+            // If tab_id is provided, ensure the card is assigned to that tab
+            if (tab_id) {
+              newCard.tab_id = tab_id;
+            }
+          }
+          
+          // Update the dashboard with PUT
           const response = await this.request<any>(`/api/dashboard/${dashboard_id}/cards`, {
-            method: 'POST',
-            body: JSON.stringify(dashboardCardData)
+            method: 'PUT',
+            body: JSON.stringify(payload)
           });
           
           this.log(LogLevel.INFO, `Successfully added card ${card_id} to dashboard ${dashboard_id}`);
