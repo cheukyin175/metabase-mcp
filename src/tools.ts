@@ -156,7 +156,7 @@ export const TOOL_DEFINITIONS = [
           type: "string",
           description: "Description of the card"
         },
-        visualization_settings: {
+        viz_settings: {
           type: "object",
           description: "Visualization settings for the card"
         },
@@ -166,6 +166,7 @@ export const TOOL_DEFINITIONS = [
         },
         collection_position: {
           type: "number",
+          description: "Position within the collection (optional)"
         }
       },
       required: ["name", "database_id", "query"]
@@ -181,12 +182,12 @@ export const TOOL_DEFINITIONS = [
           type: "number",
           description: "ID of the card to update"
         },
-        visualization_settings: {
+        viz_settings: {
           type: "object",
           description: "New visualization settings"
         }
       },
-      required: ["card_id", "visualization_settings"]
+      required: ["card_id", "viz_settings"]
     }
   },
   {
@@ -604,7 +605,7 @@ export class ToolExecutionHandler {
         }
         
         case "create_card": {
-          const { name, database_id, query, description, visualization_settings } = request.params?.arguments || {};
+          const { name, database_id, query, description, viz_settings } = request.params?.arguments || {};
           
           if (!name || !database_id || !query) {
             this.log(LogLevel.WARN, 'Missing required parameters in create_card request', { requestId });
@@ -626,9 +627,8 @@ export class ToolExecutionHandler {
               },
               database: database_id
             },
-            display: "table",
             description: description || "",
-            visualization_settings: visualization_settings || {}
+            viz_settings: viz_settings || {}
           };
           
           const response = await this.request<any>('/api/card', {
@@ -646,9 +646,9 @@ export class ToolExecutionHandler {
         }
         
         case "update_card_visualization": {
-          const { card_id, visualization_settings } = request.params?.arguments || {};
+          const { card_id, viz_settings } = request.params?.arguments || {};
           
-          if (!card_id || !visualization_settings) {
+          if (!card_id || !viz_settings) {
             this.log(LogLevel.WARN, 'Missing required parameters in update_card_visualization request', { requestId });
             throw new McpError(
               ErrorCode.InvalidParams,
@@ -664,7 +664,7 @@ export class ToolExecutionHandler {
           // Update the visualization settings
           const updateData = {
             ...card,
-            visualization_settings
+            viz_settings
           };
           
           const response = await this.request<any>(`/api/card/${card_id}`, {
