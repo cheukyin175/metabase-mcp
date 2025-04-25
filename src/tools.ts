@@ -146,17 +146,17 @@ export const TOOL_DEFINITIONS = [
         },
         database_id: {
           type: "number",
-          description: "ID of the database to query"
+          description: "ID of the database to query (required if providing a query string)"
         },
         query: {
-          type: "string",
-          description: "SQL query for the card"
+          type: ["string", "object"],
+          description: "SQL query string or complete dataset_query object (required)"
         },
         description: {
           type: "string",
           description: "Description of the card"
         },
-        visualisation_settings: {
+        visualization_settings: {
           type: "object",
           description: "Visualization settings for the card"
         },
@@ -167,9 +167,43 @@ export const TOOL_DEFINITIONS = [
         collection_position: {
           type: "number",
           description: "Position within the collection (optional)"
+        },
+        dashboard_id: {
+          type: "number",
+          description: "ID of the dashboard to add this card to (optional)"
+        },
+        cache_ttl: {
+          type: "number",
+          description: "Cache time-to-live in seconds (optional)"
+        },
+        display: {
+          type: "string",
+          description: "Display type for the card"
+        },
+        parameters: {
+          type: "array",
+          description: "Parameters for the card (optional)",
+          items: {
+            type: "object"
+          }
+        },
+        dashboard_tab_id: {
+          type: "number",
+          description: "ID of the dashboard tab to add this card to (optional)"
+        },
+        result_metadata: {
+          type: "array",
+          description: "Metadata for the result columns (optional)",
+          items: {
+            type: "object" 
+          }
+        },
+        type: {
+          type: "string",
+          description: "Type of the card, default is 'question' (optional)"
         }
       },
-      required: ["name", "database_id", "query"]
+      required: ["name", "visualization_settings", "display", "query"]
     }
   },
   {
@@ -513,31 +547,76 @@ export class ToolExecutionHandler {
         }
         
         case "create_card": {
-          const { name, database_id, query, description, viz_settings } = request.params?.arguments || {};
+          const { 
+            name,
+            database_id, 
+            query, 
+            description, 
+            visualization_settings,
+            dashboard_id,
+            collection_id,
+            collection_position,
+            cache_ttl,
+            display,
+            parameters,
+            dashboard_tab_id,
+            result_metadata,
+            type
+          } = request.params?.arguments || {};
           
-          if (!name || !database_id || !query) {
+          if (!name || !visualization_settings || !display) {
             this.log(LogLevel.WARN, 'Missing required parameters in create_card request', { requestId });
             throw new McpError(
               ErrorCode.InvalidParams,
-              "Name, database ID and query parameters are required"
+              "Name, visualization_settings, and display parameters are required"
+            );
+          }
+          
+          // Check if we have a dataset_query directly or need to construct it
+          const hasDatasetQuery = !!query && typeof query === 'object';
+          const canConstructDatasetQuery = !!database_id && typeof query === 'string';
+          
+          if (!hasDatasetQuery && !canConstructDatasetQuery) {
+            this.log(LogLevel.WARN, 'Missing dataset_query information in create_card request', { requestId });
+            throw new McpError(
+              ErrorCode.InvalidParams,
+              "Either a complete dataset_query object or database_id+query string are required"
             );
           }
           
           this.log(LogLevel.DEBUG, `Creating card with name: ${name}`);
           
-          const cardData = {
+          const cardData: any = {
             name,
-            dataset_query: {
+            description: description || "",
+            visualization_settings,
+            display,
+            type: type || "question"
+          };
+          
+          // Add dataset_query if database_id and query are provided
+          if (canConstructDatasetQuery) {
+            cardData.dataset_query = {
               type: "native",
               native: {
                 query,
                 template_tags: {}
               },
               database: database_id
-            },
-            description: description || "",
-            viz_settings: viz_settings || {}
-          };
+            };
+          } else if (hasDatasetQuery) {
+            // Use the provided dataset_query object
+            cardData.dataset_query = query;
+          }
+          
+          // Add optional fields if provided
+          if (dashboard_id) cardData.dashboard_id = dashboard_id;
+          if (collection_id) cardData.collection_id = collection_id;
+          if (collection_position) cardData.collection_position = collection_position;
+          if (cache_ttl) cardData.cache_ttl = cache_ttl;
+          if (parameters) cardData.parameters = parameters;
+          if (dashboard_tab_id) cardData.dashboard_tab_id = dashboard_tab_id;
+          if (result_metadata) cardData.result_metadata = result_metadata;
           
           const response = await this.request<any>('/api/card', {
             method: 'POST',
