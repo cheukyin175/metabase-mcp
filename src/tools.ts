@@ -148,7 +148,7 @@ export const TOOL_DEFINITIONS = [
           type: "number",
           description: "ID of the database to query (required if providing a query string)"
         },
-        query: {
+        dataset_query: {
           type: ["string", "object"],
           description: "SQL query string or complete dataset_query object (required)"
         },
@@ -550,7 +550,7 @@ export class ToolExecutionHandler {
           const { 
             name,
             database_id, 
-            query, 
+            dataset_query, 
             description, 
             visualization_settings,
             dashboard_id,
@@ -573,8 +573,8 @@ export class ToolExecutionHandler {
           }
           
           // Check if we have a dataset_query directly or need to construct it
-          const hasDatasetQuery = !!query && typeof query === 'object';
-          const canConstructDatasetQuery = !!database_id && typeof query === 'string';
+          const hasDatasetQuery = !!dataset_query && typeof dataset_query === 'object';
+          const canConstructDatasetQuery = !!database_id && typeof dataset_query === 'string';
           
           if (!hasDatasetQuery && !canConstructDatasetQuery) {
             this.log(LogLevel.WARN, 'Missing dataset_query information in create_card request', { requestId });
@@ -599,14 +599,14 @@ export class ToolExecutionHandler {
             cardData.dataset_query = {
               type: "native",
               native: {
-                query,
+                dataset_query,
                 template_tags: {}
               },
               database: database_id
             };
           } else if (hasDatasetQuery) {
             // Use the provided dataset_query object
-            cardData.dataset_query = query;
+            cardData.dataset_query = dataset_query;
           }
           
           // Add optional fields if provided
