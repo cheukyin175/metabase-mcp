@@ -156,7 +156,7 @@ export const TOOL_DEFINITIONS = [
           type: "string",
           description: "Description of the card"
         },
-        viz_settings: {
+        visualisation_settings: {
           type: "object",
           description: "Visualization settings for the card"
         },
@@ -170,76 +170,6 @@ export const TOOL_DEFINITIONS = [
         }
       },
       required: ["name", "database_id", "query"]
-    }
-  },
-  {
-    name: "update_card_visualization",
-    description: "Update visualization settings for a card",
-    inputSchema: {
-      type: "object",
-      properties: {
-        card_id: {
-          type: "number",
-          description: "ID of the card to update"
-        },
-        viz_settings: {
-          type: "object",
-          description: "New visualization settings"
-        }
-      },
-      required: ["card_id", "viz_settings"]
-    }
-  },
-  {
-    name: "add_card_to_dashboard",
-    description: "Add a card to a dashboard",
-    inputSchema: {
-      type: "object",
-      properties: {
-        dashboard_id: {
-          type: "number",
-          description: "ID of the dashboard"
-        },
-        card_id: {
-          type: "number",
-          description: "ID of the card to add"
-        },
-        row: {
-          type: "number",
-          description: "Row position in the dashboard grid"
-        },
-        col: {
-          type: "number",
-          description: "Column position in the dashboard grid"
-        },
-        size_x: {
-          type: "number",
-          description: "Width of the card in dashboard grid units"
-        },
-        size_y: {
-          type: "number",
-          description: "Height of the card in dashboard grid units"
-        },
-        parameter_mappings: {
-          type: "array",
-          description: "Parameter mappings for dashboard filters",
-          items: {
-            type: "object"
-          }
-        },
-        series: {
-          type: "array",
-          description: "Additional series to include with this card",
-          items: {
-            type: "object"
-          }
-        },
-        tab_id: {
-          type: "number",
-          description: "ID of the tab to add the card to (optional)"
-        }
-      },
-      required: ["dashboard_id", "card_id"]
     }
   },
   {
@@ -319,28 +249,6 @@ export const TOOL_DEFINITIONS = [
         }
       },
       required: ["name"]
-    }
-  },
-  {
-    name: "list_tables",
-    description: "List all tables in a database",
-    inputSchema: {
-      type: "object",
-      properties: {
-        database_id: {
-          type: "number",
-          description: "ID of the database"
-        },
-        include_tables: {
-          type: "boolean",
-          description: "Whether to include tables in the response"
-        },
-        include_cards: {
-          type: "boolean",
-          description: "Whether to include saved questions/cards in the response"
-        }
-      },
-      required: ["database_id"]
     }
   },
   {
