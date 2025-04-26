@@ -35,7 +35,7 @@ The server exposes the following tools for AI assistants:
 - `create_dashboard`: Create a new dashboard with specified name and parameters
 - `update_dashboard`: Update an existing dashboard's name, description, or parameters
 - `delete_dashboard`: Delete a dashboard
-- `add_card_to_dashboard`: Add or update cards in a dashboard with position specifications and optional tab assignment
+- `add_card_to_dashboard`: Add an existing card to a dashboard with position specifications
 
 ### Card/Question Management
 - `create_card`: Create a new question/card with SQL query
@@ -73,23 +73,55 @@ LOG_LEVEL=info # Options: debug, info, warn, error, fatal
 
 You can set these environment variables directly or use a `.env` file with [dotenv](https://www.npmjs.com/package/dotenv).
 
-## Deployment with Smithery
+## Installation
 
-To use this MCP server with Claude or other AI assistants, fork this repository and deploy using Smithery:
+### Prerequisites
 
-### Steps to Deploy:
+- Node.js 18.0.0 or higher
+- An active Metabase instance with appropriate credentials
 
-1. Fork this repository to your GitHub account
-2. Go to [Smithery](https://smithery.dev) and connect with your GitHub account
-3. Deploy the forked repository through Smithery's interface
+### Development Setup
+
+```bash
+# Install dependencies
+npm install
+
+# Build the project
+npm run build
+
+# Start the server
+npm start
+
+# For development with auto-rebuild
+npm run watch
+```
 
 ### Claude Desktop Integration
 
-Configure your Claude Desktop to use the Smithery-hosted version:
+To use with Claude Desktop, add this server configuration:
 
 **MacOS**: Edit `~/Library/Application Support/Claude/claude_desktop_config.json`
 
 **Windows**: Edit `%APPDATA%/Claude/claude_desktop_config.json`
+
+```json
+{
+  "mcpServers": {
+    "metabase-mcp": {
+      "command": "/absolute/path/to/metabase-mcp/build/index.js",
+      "env": {
+        "METABASE_URL": "https://your-metabase-instance.com",
+        "METABASE_USER_EMAIL": "your_email@example.com",
+        "METABASE_PASSWORD": "your_password"
+        // Or alternatively, use API key authentication
+        // "METABASE_API_KEY": "your_api_key"
+      }
+    }
+  }
+}
+```
+
+Alternatively, you can use the Smithery hosted version via npx with JSON configuration:
 
 #### API Key Authentication:
 
@@ -102,7 +134,7 @@ Configure your Claude Desktop to use the Smithery-hosted version:
         "-y",
         "@smithery/cli@latest",
         "run",
-        "YOUR_GITHUB_USERNAME/metabase-mcp-server",
+        "@hyeongjun-dev/metabase-mcp",
         "--config",
         "{\"metabaseUrl\":\"https://your-metabase-instance.com\",\"metabaseApiKey\":\"your_api_key\",\"metabasePassword\":\"\",\"metabaseUserEmail\":\"\"}"
       ]
@@ -122,7 +154,7 @@ Configure your Claude Desktop to use the Smithery-hosted version:
         "-y",
         "@smithery/cli@latest",
         "run",
-        "YOUR_GITHUB_USERNAME/metabase-mcp-server",
+        "@hyeongjun-dev/metabase-mcp",
         "--config",
         "{\"metabaseUrl\":\"https://your-metabase-instance.com\",\"metabaseApiKey\":\"\",\"metabasePassword\":\"your_password\",\"metabaseUserEmail\":\"your_email@example.com\"}"
       ]
@@ -131,11 +163,35 @@ Configure your Claude Desktop to use the Smithery-hosted version:
 }
 ```
 
+## Debugging
+
+Since MCP servers communicate over stdio, use the [MCP Inspector](https://github.com/modelcontextprotocol/inspector) for debugging:
+
+```bash
+npm run inspector
+```
+
+The Inspector will provide a browser-based interface for monitoring requests and responses.
+
+## Docker Support
+
+A Docker image is available for containerized deployment:
+
+```bash
+# Build the Docker image
+docker build -t metabase-mcp .
+
+# Run the container with environment variables
+docker run -e METABASE_URL=https://your-metabase.com \
+           -e METABASE_API_KEY=your_api_key \
+           metabase-mcp
+```
+
 ## Security Considerations
 
-- recommend using API key authentication for production environments
+- We recommend using API key authentication for production environments
 - Keep your API keys and credentials secure
-- Consider using environment variables instead of hardcoding credentials
+- Consider using Docker secrets or environment variables instead of hardcoding credentials
 - Apply appropriate network security measures to restrict access to your Metabase instance
 
 ## Contributing
