@@ -1,10 +1,6 @@
-# Metabase MCP Server Dockerfile
-# Base image: Node.js LTS Alpine for minimum footprint
-
-# Stage 1: Build
 FROM node:lts-alpine AS builder
 
-LABEL maintainer="Hyeongjun Yu <https://github.com/hyeongjun-dev>"
+LABEL maintainer="Cheuk Yin <https://github.com/cheukyin175>"
 LABEL description="Model Context Protocol server for Metabase integration"
 LABEL version="0.1.0"
 

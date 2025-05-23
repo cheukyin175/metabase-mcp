@@ -420,13 +420,19 @@ export class ToolExecutionHandler {
 
         case "list_databases": {
           this.log(LogLevel.DEBUG, 'Fetching all databases from Metabase');
-          const response = await this.request<any[]>('/api/database');
-          this.log(LogLevel.INFO, `Successfully retrieved ${response.length} databases`);
-
+          const response = await this.request<any>('/api/database');
+          // The response is expected to be an object with a 'data' property (array of databases)
+          const dbs = Array.isArray(response.data) ? response.data : [];
+          const parsed = dbs.map((db: any) => ({
+            id: db.id,
+            name: db.name,
+            dbname: db.details?.dbname
+          }));
+          this.log(LogLevel.INFO, `Successfully retrieved ${parsed.length} databases`);
           return {
             content: [{
               type: "text",
-              text: JSON.stringify(response, null, 2)
+              text: JSON.stringify(parsed, null, 2)
             }]
           };
         }
