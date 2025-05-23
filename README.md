@@ -19,7 +19,6 @@ This MCP server provides integration with the Metabase API, enabling LLM with MC
 The server exposes the following tools for AI assistants:
 
 ### Data Access Tools
-- `list_dashboards`: Retrieve all available dashboards in your Metabase instance
 - `list_cards`: Get all saved questions/cards in Metabase
 - `list_databases`: View all connected database sources
 - `list_collections`: List all collections in Metabase
@@ -30,16 +29,8 @@ The server exposes the following tools for AI assistants:
 - `execute_card`: Run saved questions and retrieve results with optional parameters
 - `execute_query`: Execute custom SQL queries against any connected database
 
-### Dashboard Management
-- `get_dashboard_cards`: Extract all cards from a specific dashboard
-- `create_dashboard`: Create a new dashboard with specified name and parameters
-- `update_dashboard`: Update an existing dashboard's name, description, or parameters
-- `delete_dashboard`: Delete a dashboard
-- `add_card_to_dashboard`: Add an existing card to a dashboard with position specifications
-
 ### Card/Question Management
-- `create_card`: Create a new question/card with SQL query
-- `update_card_visualization`: Update visualization settings for a card
+- `create_card`: Create a new question/card with SQL query, optionally adding it to a collection.
 
 ### Collection Management
 - `create_collection`: Create a new collection to organize dashboards and questions
@@ -134,7 +125,7 @@ Alternatively, you can use the Smithery hosted version via npx with JSON configu
         "-y",
         "@smithery/cli@latest",
         "run",
-        "@hyeongjun-dev/metabase-mcp",
+        "@cheukyin175/metabase-mcp",
         "--config",
         "{\"metabaseUrl\":\"https://your-metabase-instance.com\",\"metabaseApiKey\":\"your_api_key\",\"metabasePassword\":\"\",\"metabaseUserEmail\":\"\"}"
       ]
@@ -154,7 +145,7 @@ Alternatively, you can use the Smithery hosted version via npx with JSON configu
         "-y",
         "@smithery/cli@latest",
         "run",
-        "@hyeongjun-dev/metabase-mcp",
+        "@cheukyin175/metabase-mcp",
         "--config",
         "{\"metabaseUrl\":\"https://your-metabase-instance.com\",\"metabaseApiKey\":\"\",\"metabasePassword\":\"your_password\",\"metabaseUserEmail\":\"your_email@example.com\"}"
       ]
@@ -163,29 +154,131 @@ Alternatively, you can use the Smithery hosted version via npx with JSON configu
 }
 ```
 
-## Debugging
-
-Since MCP servers communicate over stdio, use the [MCP Inspector](https://github.com/modelcontextprotocol/inspector) for debugging:
-
-```bash
-npm run inspector
-```
-
-The Inspector will provide a browser-based interface for monitoring requests and responses.
-
 ## Docker Support
+
+### Building the Image
 
 A Docker image is available for containerized deployment:
 
 ```bash
 # Build the Docker image
 docker build -t metabase-mcp .
+```
 
-# Run the container with environment variables
-docker run -e METABASE_URL=https://your-metabase.com \
+### Running the Container (for Stdio-based Tools)
+
+This server communicates via stdio (standard input/output) by default. This is suitable for AI assistants or tools that can execute a command and interact with its process (e.g., like the Claude Desktop integration described elsewhere).
+
+```bash
+# Run the container with environment variables for stdio-based interaction
+docker run --rm -i \
+           -e METABASE_URL=https://your-metabase.com \
            -e METABASE_API_KEY=your_api_key \
            metabase-mcp
 ```
+*(The `--rm -i` flags are typical for interactive stdio command execution)*
+
+### Production Docker Deployment & Potential HTTP Access
+
+The default server is stdio-based. For use with tools expecting an HTTP endpoint (like n8n's HTTP Request node, custom web UIs, or certain configurations of tools like Cursor), the Metabase MCP server application itself would need to be **adapted to include an HTTP transport** (e.g., to listen for MCP JSON-RPC requests on a port like 4321, which is `EXPOSE`d in the Dockerfile).
+
+Assuming such an HTTP-enabled version of the server, you could run it in production as follows:
+
+1.  Create an environment file (e.g., `metabase.env`) with your credentials:
+    ```env
+    METABASE_URL=https://your-metabase.com
+    METABASE_API_KEY=your_api_key
+    LOG_LEVEL=info
+    # If using password auth (less recommended for production):
+    # METABASE_USER_EMAIL=your_email@example.com
+    # METABASE_PASSWORD=your_password
+    ```
+
+2.  Run the Docker container:
+    ```bash
+    docker run -d \
+               -p 4321:4321 \
+               --env-file ./metabase.env \
+               --restart unless-stopped \
+               --name metabase-mcp-production \
+               metabase-mcp
+    ```
+    If the server inside the container were serving HTTP on port 4321, it would then be accessible at `http://<docker_host_ip>:4321`.
+
+### Using with n8n (Conceptual - Requires HTTP-enabled MCP Server)
+
+For n8n to interact with this MCP server using its standard HTTP Request node, the MCP server **must be modified to expose an HTTP endpoint** (e.g., on port 4321).
+
+If you have an HTTP-enabled version of the MCP server:
+
+1.  **Network Setup (if n8n is also in Docker):**
+    *   Create a shared Docker network:
+        ```bash
+        docker network create my-automation-net
+        ```
+    *   Run the (HTTP-enabled) Metabase MCP server container on this network (using an `--env-file` as shown in the production example):
+        ```bash
+        docker run -d \
+                   --network my-automation-net \
+                   --name metabase-mcp-http-service \
+                   --env-file ./metabase.env \
+                   --restart unless-stopped \
+                   metabase-mcp 
+                   # This container would need to be running an HTTP server on its internal port 4321
+        ```
+    *   Run your n8n container on the same network:
+        ```bash
+        docker run -d \
+                   --network my-automation-net \
+                   --name n8n-instance \
+                   -p 5678:5678 \
+                   -e GENERIC_TIMEZONE="YOUR_TIMEZONE" \
+                   # ... other n8n environment variables ...
+                   n8nio/n8n
+        ```
+    *   In your n8n workflows, use an HTTP Request node to send MCP JSON-RPC requests to `http://metabase-mcp-http-service:4321`.
+
+2.  **If n8n is on the host (or elsewhere with network access):**
+    *   Ensure the Metabase MCP server container is run with port mapping (e.g., `-p 4321:4321`) as shown in the "Production Docker Deployment" example.
+    *   In n8n, configure the HTTP Request node to call `http://<docker_host_ip>:4321`.
+
+### Troubleshooting Docker Deployment
+
+If you encounter any issues with the Docker build, check the following:
+
+1. Make sure you're using the latest Dockerfile from the repository, as it includes specific optimizations to handle TypeScript compilation correctly.
+2. If you make changes to the source code, ensure you rebuild the Docker image.
+3. You can check the logs of a running container with:
+
+```bash
+docker logs metabase-mcp # Or your container name, e.g., metabase-mcp-production
+```
+
+## Cursor Integration
+
+This MCP server communicates via stdio by default. To use it with Cursor, you would typically configure Cursor to execute the server as a command, similar to the Claude Desktop integration. Cursor would need to manage the server process and communicate with it via stdio.
+
+1.  **Ensure your project is built:** `npm run build` (This creates `build/index.js`).
+2.  **Get the absolute path** to the executable: `/absolute/path/to/metabase-mcp-server/build/index.js`.
+3.  **Configure Cursor (Conceptual JSON):**
+    If Cursor uses a JSON configuration file for command-based MCP servers, it might look like this (refer to Cursor's documentation for the exact format and file location):
+
+    ```json
+    {
+      "mcpServers": { // This top-level key might vary for Cursor
+        "metabase-mcp-cursor": {
+          "command": "/absolute/path/to/metabase-mcp-server/build/index.js",
+          "env": {
+            "METABASE_URL": "https://your-metabase-instance.com",
+            "METABASE_API_KEY": "your_api_key"
+            // Or METABASE_USER_EMAIL & METABASE_PASSWORD
+          }
+        }
+      }
+    }
+    ```
+
+    **Note:** If Cursor *only* supports MCP servers via an HTTP URL, then the `metabase-mcp-server` application would first need to be modified to include an HTTP transport, as discussed in the "Production Docker Deployment & Potential HTTP Access" section. You would then run it (e.g., in Docker with port mapping) and provide the `http://localhost:4321` (or similar) URL to Cursor.
 
 ## Security Considerations
 

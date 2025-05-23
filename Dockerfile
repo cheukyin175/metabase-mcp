@@ -1,28 +1,39 @@
 # Metabase MCP Server Dockerfile
-# Single-stage build for simplicity and reliability
+# Single-stage build with manual TypeScript compilation
 
 FROM node:18-alpine
 
-LABEL maintainer="Cheuk Yin <https://github.com/cheukyin175>"
-LABEL description="Model Context Protocol server for Metabase"
-LABEL version="0.1.0"
-
-# Set working directory
 WORKDIR /app
 
-# Copy package files
+# Copy only package files first
 COPY package*.json ./
 
-# Install dependencies
-RUN npm install --ignore-scripts
+# Disable scripts to prevent npm lifecycle scripts from running
+ENV npm_config_ignore_scripts=true
 
-# Copy application code
-COPY . .
+# Install all dependencies (we'll need TypeScript to compile)
+RUN npm install
 
-# Build the TypeScript project
-RUN npm run build && \
-    # Prune dev dependencies after build
-    npm prune --production
+# Copy source code and tsconfig
+COPY src/ ./src/
+COPY tsconfig.json .
+
+# Install TypeScript globally for direct access to tsc
+RUN npm install -g typescript
+
+# Manually compile TypeScript to JavaScript
+RUN tsc
+
+# Create dist directory and copy compiled files
+RUN mkdir -p dist && \
+    cp -r build/* dist/ && \
+    ls -la dist
+
+# Set permissions on entry point
+RUN chmod 755 dist/index.js
+
+# Remove devDependencies to make image smaller
+RUN npm prune --omit=dev
 
 # Default environment variables
 ENV NODE_ENV=production \
@@ -32,11 +43,11 @@ ENV NODE_ENV=production \
 # When running in the same Docker network as Metabase, use the container name:
 # ENV METABASE_URL=http://metabase:3000
 
-# Expose the port (if needed for external access)
+# Expose port if needed
 EXPOSE 4321
 
 # Use non-root user for better security
 USER node
 
-# Command to run the server (adjust the path based on your build output)
+# Run the server
 CMD ["node", "dist/index.js"]

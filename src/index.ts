@@ -1,14 +1,7 @@
 #!/usr/bin/env node
 
-/**
- * Metabase MCP Server
- * Implements interaction with Metabase API, providing the following functions:
- * - Get dashboard list
- * - Get questions list
- * - Get database list
- * - Execute question queries
- * - Get dashboard details
- */
+import * as dotenv from 'dotenv';
+dotenv.config();
 
 import { Server } from "@modelcontextprotocol/sdk/server/index.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
