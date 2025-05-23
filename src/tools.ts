@@ -748,13 +748,15 @@ export class ToolExecutionHandler {
           }
           
           this.log(LogLevel.DEBUG, `Fetching tables for database ID: ${database_id}`);
-          const response = await this.request<any[]>(`/api/database/${database_id}/tables`);
-          this.log(LogLevel.INFO, `Successfully retrieved ${response.length} tables from database: ${database_id}`);
+          const response = await this.request<any>(`/api/database/${database_id}/metadata`);
+          const tables = response.tables || [];
+          const formattedTables = tables.map((t: any) => `${t.schema || ''}.${t.name || ''} - ${t.description || ''}`);
+          this.log(LogLevel.INFO, `Successfully retrieved ${tables.length} tables from database: ${database_id}`);
 
           return {
             content: [{
               type: "text",
-              text: JSON.stringify(response, null, 2)
+              text: JSON.stringify(formattedTables, null, 2)
             }]
           };
         }
