@@ -773,11 +773,14 @@ export class ToolExecutionHandler {
           }
           
           this.log(LogLevel.DEBUG, `Fetching fields for table ID: ${table_id}`);
-          const response = await this.request<any[]>(`/api/table/${table_id}/query_metadata`);
-          this.log(LogLevel.INFO, `Successfully retrieved ${response.length} fields from table: ${table_id}`);
+          const response = await this.request<any>(`/api/table/${table_id}/query_metadata`);
+          
+          // Check if fields property exists and is an array
+          const fields = response.fields || [];
+          this.log(LogLevel.INFO, `Successfully retrieved ${fields.length} fields from table: ${table_id}`);
 
           // Format the fields following the jq-like structure
-          const formattedFields = response.map(field => ({
+          const formattedFields = fields.map((field: any) => ({
             id: field.id,
             name: field.name,
             display_name: field.display_name,
