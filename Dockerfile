@@ -2,24 +2,20 @@
 # Base image: Node.js LTS Alpine for minimum footprint
 
 # Stage 1: Build
-FROM node:lts-alpine AS builder
+FROM node:18-alpine AS builder
 
-LABEL maintainer="Hyeongjun Yu <https://github.com/hyeongjun-dev>"
-LABEL description="Model Context Protocol server for Metabase integration"
+LABEL maintainer="Cheuk Yin <https://github.com/cheukyin175>"
+LABEL description="Model Context Protocol server for Metabase"
 LABEL version="0.1.0"
 
 # Set working directory
-WORKDIR /usr/src/app
+WORKDIR /app
 
 # Copy package files first to leverage Docker layer caching
 COPY package*.json ./
 
-# Configure npm to skip prepare scripts
-RUN npm config set ignore-scripts true
-# Install all dependencies including devDependencies for build setup
-RUN npm ci
-# Restore the ignore-scripts setting
-RUN npm config set ignore-scripts false
+# Install dependencies for build
+RUN npm install --ignore-scripts
 
 # Copy application code
 COPY . .
@@ -27,42 +23,34 @@ COPY . .
 # Build the TypeScript project
 RUN npm run build
 
-# Set appropriate permissions for the executable
-RUN chmod +x build/index.js
+# Stage 2: Runtime
+FROM node:18-alpine
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install only production dependencies
+RUN npm ci --omit=dev --only=production
+
+# Copy build artifacts from builder stage
+COPY --from=builder /app/build ./build
+COPY --from=builder /app/dist ./dist
 
 # Default environment variables
 ENV NODE_ENV=production \
     LOG_LEVEL=info
 
-# Set port if needed (optional for MCP)
-# ENV MCP_SERVER_PORT=3000
+# Environment variables for Metabase connection in Docker network
+# When running in the same Docker network as Metabase, use the container name:
+# ENV METABASE_URL=http://metabase:3000
 
-# Authentication setup (configure via Docker run -e flags)
-# Option 1: Username and password authentication
-# docker run -e METABASE_URL=https://metabase.example.com -e METABASE_USER_EMAIL=user@example.com -e METABASE_PASSWORD=pass metabase-mcp
-
-# Option 2: API Key authentication (recommended for production)
-# docker run -e METABASE_URL=https://metabase.example.com -e METABASE_API_KEY=your_api_key metabase-mcp
+# Expose the port (if needed for external access)
+EXPOSE 4321
 
 # Use non-root user for better security
 USER node
 
-# Run the server
-CMD ["node", "build/index.js"]
-
-# Stage 2: Runtime
-FROM node:lts-alpine
-
-WORKDIR /usr/src/app
-
-# Install only production dependencies, excluding devDependencies
-COPY package*.json ./
-RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
-
-# Copy build artifacts
-COPY --from=builder /usr/src/app/build ./build
-
-ENV NODE_ENV=production
-USER node
-
-CMD ["node", "build/index.js"]
+# Command to run the server (adjust the path based on your build output)
+CMD ["node", "dist/index.js"]
