@@ -776,10 +776,21 @@ export class ToolExecutionHandler {
           const response = await this.request<any[]>(`/api/table/${table_id}/fields`);
           this.log(LogLevel.INFO, `Successfully retrieved ${response.length} fields from table: ${table_id}`);
 
+          // Format the fields following the jq-like structure
+          const formattedFields = response.map(field => ({
+            id: field.id,
+            name: field.name,
+            display_name: field.display_name,
+            type: field.base_type,
+            foreign_key: field.semantic_type === "type/FK" 
+              ? { target_table_id: field.target?.table_id } 
+              : "No"
+          }));
+
           return {
             content: [{
               type: "text",
-              text: JSON.stringify(response, null, 2)
+              text: JSON.stringify(formattedFields, null, 2)
             }]
           };
         }

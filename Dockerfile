@@ -1,8 +1,7 @@
 # Metabase MCP Server Dockerfile
-# Base image: Node.js LTS Alpine for minimum footprint
+# Single-stage build for simplicity and reliability
 
-# Stage 1: Build
-FROM node:18-alpine AS builder
+FROM node:18-alpine
 
 LABEL maintainer="Cheuk Yin <https://github.com/cheukyin175>"
 LABEL description="Model Context Protocol server for Metabase"
@@ -11,32 +10,19 @@ LABEL version="0.1.0"
 # Set working directory
 WORKDIR /app
 
-# Copy package files first to leverage Docker layer caching
+# Copy package files
 COPY package*.json ./
 
-# Install dependencies for build
+# Install dependencies
 RUN npm install --ignore-scripts
 
 # Copy application code
 COPY . .
 
 # Build the TypeScript project
-RUN npm run build
-
-# Stage 2: Runtime
-FROM node:18-alpine
-
-WORKDIR /app
-
-# Copy package files
-COPY package*.json ./
-
-# Install only production dependencies
-RUN npm ci --omit=dev --only=production
-
-# Copy build artifacts from builder stage
-COPY --from=builder /app/build ./build
-COPY --from=builder /app/dist ./dist
+RUN npm run build && \
+    # Prune dev dependencies after build
+    npm prune --production
 
 # Default environment variables
 ENV NODE_ENV=production \
