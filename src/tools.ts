@@ -773,7 +773,7 @@ export class ToolExecutionHandler {
           }
           
           this.log(LogLevel.DEBUG, `Fetching fields for table ID: ${table_id}`);
-          const response = await this.request<any[]>(`/api/table/${table_id}/fields`);
+          const response = await this.request<any[]>(`/api/table/${table_id}/query_metadata`);
           this.log(LogLevel.INFO, `Successfully retrieved ${response.length} fields from table: ${table_id}`);
 
           // Format the fields following the jq-like structure
