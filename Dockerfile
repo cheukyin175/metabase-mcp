@@ -1,7 +1,10 @@
 # Metabase MCP Server Dockerfile
-# Single-stage build with manual TypeScript compilation
+# Multi-stage build for a smaller and more secure final image
+FROM node:lts-alpine AS builder
 
-FROM node:18-alpine
+LABEL maintainer="Cheuk Yin <https://github.com/cheukyin175>"
+LABEL description="Model Context Protocol server for Metabase integration"
+LABEL version="0.1.0"
 
 WORKDIR /app
 
