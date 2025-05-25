@@ -207,6 +207,90 @@ export const TOOL_DEFINITIONS = [
       },
       required: ["table_id"]
     }
+  },
+  {
+    name: "get_card_details",
+    description: "Get details of a specific question/card in Metabase",
+    inputSchema: {
+      type: "object",
+      properties: {
+        card_id: {
+          type: "number",
+          description: "ID of the card/question"
+        }
+      },
+      required: ["card_id"]
+    }
+  },
+  {
+    name: "update_card",
+    description: "Update an existing question/card in Metabase",
+    inputSchema: {
+      type: "object",
+      properties: {
+        card_id: {
+          type: "number",
+          description: "ID of the card/question to update"
+        },
+        name: {
+          type: "string",
+          description: "New name for the card (optional)"
+        },
+        query: {
+          type: "string",
+          description: "New SQL query for the card (optional)"
+        },
+        description: {
+          type: "string",
+          description: "New description for the card (optional)"
+        },
+        collection_id: {
+          type: "number",
+          description: "New ID of the collection for the card (optional)"
+        },
+        visualization_settings: {
+          type: "object",
+          description: "New visualization settings (optional)"
+        }
+      },
+      required: ["card_id"]
+    }
+  },
+  {
+    name: "delete_card",
+    description: "Delete a question/card in Metabase",
+    inputSchema: {
+      type: "object",
+      properties: {
+        card_id: {
+          type: "number",
+          description: "ID of the card/question to delete"
+        }
+      },
+      required: ["card_id"]
+    }
+  },
+  {
+    name: "list_dashboards",
+    description: "List all dashboards in Metabase",
+    inputSchema: {
+      type: "object",
+      properties: {}
+    }
+  },
+  {
+    name: "get_dashboard_details",
+    description: "Get details of a specific dashboard in Metabase",
+    inputSchema: {
+      type: "object",
+      properties: {
+        dashboard_id: {
+          type: "number",
+          description: "ID of the dashboard"
+        }
+      },
+      required: ["dashboard_id"]
+    }
   }
 ];
 
@@ -492,8 +576,8 @@ export class ToolExecutionHandler {
             name: field.name,
             display_name: field.display_name,
             type: field.base_type,
-            foreign_key: field.semantic_type === "type/FK" 
-              ? { target_table_id: field.target?.table_id } 
+            foreign_key: field.semantic_type === "type/FK"
+              ? { target_table_id: field.target?.table_id }
               : "No"
           }));
 
@@ -502,6 +586,108 @@ export class ToolExecutionHandler {
               type: "text",
               text: JSON.stringify(formattedFields, null, 2)
             }]
+          };
+        }
+
+        case "get_card_details": {
+          const cardId = request.params?.arguments?.card_id;
+          if (!cardId) {
+            this.log(LogLevel.WARN, 'Missing card_id parameter in get_card_details request', { requestId });
+            throw new McpError(ErrorCode.InvalidParams, "Card ID parameter is required");
+          }
+
+          this.log(LogLevel.DEBUG, `Fetching details for card ID: ${cardId}`, { requestId });
+          const response = await this.request<any>(`/api/card/${cardId}`);
+          this.log(LogLevel.INFO, `Successfully retrieved details for card ID: ${cardId}`, { requestId });
+
+          return {
+            content: [{ type: "text", text: JSON.stringify(response, null, 2) }]
+          };
+        }
+
+        case "update_card": {
+          const cardId = request.params?.arguments?.card_id;
+          if (!cardId) {
+            this.log(LogLevel.WARN, 'Missing card_id parameter in update_card request', { requestId });
+            throw new McpError(ErrorCode.InvalidParams, "Card ID parameter is required");
+          }
+
+          const { name, query, description, collection_id, visualization_settings } = request.params?.arguments || {};
+          if (!name && !query && !description && collection_id === undefined && !visualization_settings) {
+            this.log(LogLevel.WARN, 'No update parameters provided for update_card request', { requestId });
+            throw new McpError(ErrorCode.InvalidParams, "At least one modifiable field (name, query, description, collection_id, visualization_settings) must be provided for update.");
+          }
+
+          this.log(LogLevel.DEBUG, `Updating card ID: ${cardId}`, { requestId, arguments: request.params?.arguments });
+
+          const payload: any = {};
+          if (name) payload.name = name;
+          if (description) payload.description = description;
+          if (collection_id !== undefined) payload.collection_id = collection_id;
+          if (visualization_settings) payload.visualization_settings = visualization_settings;
+          if (query) {
+            // Assuming the card's current database_id will be used by Metabase
+            // or that it doesn't need to be re-specified if not changing.
+            // Fetching the card's current database_id first could be a more robust solution
+            // if Metabase strictly requires it in the payload for query updates.
+            payload.dataset_query = {
+              type: "native",
+              native: { query: query },
+              // database: cardDetails.database_id // Would need to fetch cardDetails first
+            };
+          }
+
+          const response = await this.request<any>(`/api/card/${cardId}`, {
+            method: 'PUT',
+            body: JSON.stringify(payload)
+          });
+
+          this.log(LogLevel.INFO, `Successfully updated card ID: ${cardId}`, { requestId });
+          return {
+            content: [{ type: "text", text: JSON.stringify(response, null, 2) }]
+          };
+        }
+
+        case "delete_card": {
+          const cardId = request.params?.arguments?.card_id;
+          if (!cardId) {
+            this.log(LogLevel.WARN, 'Missing card_id parameter in delete_card request', { requestId });
+            throw new McpError(ErrorCode.InvalidParams, "Card ID parameter is required");
+          }
+
+          this.log(LogLevel.DEBUG, `Deleting card ID: ${cardId}`, { requestId });
+          // Metabase API for DELETE card returns 204 No Content on success
+          await this.request<void>(`/api/card/${cardId}`, { method: 'DELETE' });
+          this.log(LogLevel.INFO, `Successfully deleted card ID: ${cardId}`, { requestId });
+
+          return {
+            content: [{ type: "text", text: `Card ID ${cardId} deleted successfully.` }]
+          };
+        }
+
+        case "list_dashboards": {
+          this.log(LogLevel.DEBUG, 'Fetching all dashboards from Metabase', { requestId });
+          const response = await this.request<any[]>('/api/dashboard');
+          this.log(LogLevel.INFO, `Successfully retrieved ${response.length} dashboards`, { requestId });
+
+          return {
+            content: [{ type: "text", text: JSON.stringify(response, null, 2) }]
+          };
+        }
+
+        case "get_dashboard_details": {
+          const dashboardId = request.params?.arguments?.dashboard_id;
+          if (!dashboardId) {
+            this.log(LogLevel.WARN, 'Missing dashboard_id parameter in get_dashboard_details request', { requestId });
+            throw new McpError(ErrorCode.InvalidParams, "Dashboard ID parameter is required");
+          }
+
+          this.log(LogLevel.DEBUG, `Fetching details for dashboard ID: ${dashboardId}`, { requestId });
+          const response = await this.request<any>(`/api/dashboard/${dashboardId}`);
+          this.log(LogLevel.INFO, `Successfully retrieved details for dashboard ID: ${dashboardId}`, { requestId });
+
+          return {
+            content: [{ type: "text", text: JSON.stringify(response, null, 2) }]
           };
         }
 
@@ -521,7 +707,15 @@ export class ToolExecutionHandler {
       const apiError = error as ApiError;
       const errorMessage = apiError.data?.message || apiError.message || 'Unknown error';
 
-      this.log(LogLevel.ERROR, `Tool execution failed: ${errorMessage}`, error);
+      // Handle cases where the error might not have a 'status' property (e.g. network errors)
+      // For 204 No Content from delete_card, it might be caught here if not handled earlier
+      // However, the current this.request is expected to handle 204 as success.
+      // This generic catch is more for unexpected errors or actual API error responses.
+      if (error instanceof McpError) { // Re-throw McpErrors directly
+        throw error;
+      }
+
+      this.log(LogLevel.ERROR, `Tool execution failed: ${errorMessage}`, { requestId, error });
       return {
         content: [{
           type: "text",
@@ -531,4 +725,4 @@ export class ToolExecutionHandler {
       };
     }
   }
-} 
+}
