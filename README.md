@@ -94,17 +94,16 @@ uv run python scripts/install-cursor.py
 #### SSE Transport
 ```bash
 # Install with SSE transport
-uv run python scripts/install-cursor.py --sse        # Port 8000 (default)
-uv run python scripts/install-cursor.py --sse 9000   # Custom port
+uv run python scripts/install-cursor.py --sse        # Uses PORT environment variable or default 8000
 
 # Or use the dedicated SSE installer
-uv run python scripts/install-cursor-sse.py          # Port 8000
-uv run python scripts/install-cursor-sse.py 9000     # Custom port
+uv run python scripts/install-cursor-sse.py          # Uses PORT environment variable or default 8000
 ```
 
 **Important for SSE**: You must start the server before using Cursor:
 ```bash
-uv run python server.py --sse 8000
+# Use environment variables for host/port configuration
+HOST=0.0.0.0 PORT=8000 uv run python server.py --sse
 ```
 
 ### Claude Integration
@@ -123,15 +122,26 @@ To integrate with Claude, add or update the configuration file at `~/Library/App
 
 ## Available Tools
 
+### Database & Schema Tools
 - `list_databases`: List all databases in Metabase
-- `list_cards`: List all questions/cards in Metabase  
+- `list_tables`: List all tables in a database with formatted output
+- `get_table_fields`: Get all fields/columns in a table
+
+### Card & Query Tools  
+- `list_cards`: List all questions/cards in Metabase (WARNING: Large dataset)
+- `list_cards_paginated`: List cards with pagination to avoid timeout issues
 - `execute_card`: Execute a Metabase question/card and get results
 - `execute_query`: Execute a SQL query against a Metabase database
 - `create_card`: Create a new question/card in Metabase
+
+### Collection Management Tools
 - `list_collections`: List all collections in Metabase
+- `list_cards_by_collection`: List cards in a specific collection (focused dataset)
 - `create_collection`: Create a new collection in Metabase
-- `list_tables`: List all tables in a database
-- `get_table_fields`: Get all fields/columns in a table
+
+### Smart Search Tools
+- `find_candidate_collections`: Find collections by name/description matching (fast)
+- `search_cards_in_collections`: Search for cards within specific collections (targeted)
 
 ## Transport Methods
 
